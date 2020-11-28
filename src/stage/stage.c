@@ -4,192 +4,176 @@
 
 #include <SDL2/SDL.h>
 
-#include "../entity/entity.h"
-#include "../graphic/graphic.h"
-#include "../background/background.h"
-#include "../input/input.h"
-#include "../screen/screen.h"
-#include "../player/player.h"
-#include "../graphic/effects/wave.h"
-#include "../graphic/effects/fire.h"
-#include "../graphic/effects/glow.h"
 #include "../menu/menu.h"
-#include "../text/text.h"
+#include "../levels/lvl_one/lvl_one.h"
+#include "../scene/scene.h"
+#include "../input/input.h"
+#include "../transition/transition.h"
+#include "../camera/camera.h"
 
-#define MAX_PARTICLES 8
-
-SDL_Color colors[5] = {
-    {254, 106, 213, 0},
-    {199, 116, 232, 0},
-    {173, 140, 254, 0},
-    {135, 149, 232, 0},
-    {148, 208, 254, 0}
-};
+#include "../common/common.h"
 
 typedef struct {
-    struct background_t* bg;
-    struct player_t* player;
-    struct fire_t* fire;
 
-    struct entity_t* particles[MAX_PARTICLES];
-    struct wave_t* waves[MAX_PARTICLES];
+    scenes_id current_scene;
 
-    struct menu_t* menu;
+    struct transition_t* transition;
+    struct scene_t* scene;
+    struct camera_t* camera;
+
+    /* struct menu_t* menu; */
 
 } stage_t;
 
+private void __stage_build_scene(stage_t* stage, game_component_args* args);
+private void __stage_clean_scene(stage_t* stage);
 
 stage_t* stage_new(void) {
     stage_t* stage = (stage_t*)malloc(sizeof(stage_t));
-    stage->bg = NULL;
-    stage->player = NULL;
-    stage->fire = NULL;
-    stage->menu = NULL;
+    stage->scene = NULL;
+    stage->transition = NULL;
+    stage->camera = NULL;
 
     return stage;
 }
 
-int stage_ctor(stage_t* stage, struct graphic_t* graphic, struct screen_t* screen) {
+int stage_ctor(stage_t* stage, game_component_args* args) {
 
-    stage->bg = background_new();
-    if (background_ctor(stage->bg, graphic_load_texture(graphic, "gfx/sun.png")) != 0) {
+    stage->current_scene = MENU;
+
+    stage->scene = (struct scene_t*)menu_new();
+    if (menu_ctor((struct menu_t*)stage->scene, args, MENU) != 0) {
         return -1;
     }
 
-    stage->player = player_new();
-    if (player_ctor(stage->player, graphic) != 0) {
+    stage->transition = transition_new();
+    if (transition_ctor(stage->transition) != 0) {
         return -1;
     }
 
-
-    stage->fire = fire_new();
-    if (fire_ctor(stage->fire, graphic, 100, 200, 10, 200, UP, 5, 2, 0) != 0) {
+    stage->camera = camera_new();
+    if (camera_ctor(stage->camera) != 0) {
         return -1;
     }
-
-    stage->menu = menu_new();
-    if (menu_ctor(stage->menu, graphic) != 0 ) {
-        return -1;
-    }
-
-    int w = screen_get_window_default_w(screen);
-    int h = screen_get_window_default_h(screen);
-    for (int i = 0; i < MAX_PARTICLES; i++) {
-        srand(time(NULL)+i);
-        SDL_Texture* texture = create_glow_ball(graphic, rand() % 20+10, (colors[rand() % 5]), 3);
-        stage->particles[i] = entity_new();
-        if (entity_ctor(stage->particles[i], texture, (rand() % w + 1), (rand() % h + 1)) != 0) {
-            return -1;
-        }
-    }
-
-    int posw, posh;
-    for (int i = 0; i < MAX_PARTICLES; i++) {
-        srand(time(NULL)+i);
-        int dir = (rand() % (RIGHT+1));
-        stage->waves[i] = wave_new();
-
-        switch(dir) {
-            case UP:
-                posw = w / 2;
-                posh = h;
-                break;
-            case DOWN:
-                posw = w / 2;
-                posh = 0;
-                break;
-            case LEFT:
-                posw = w;
-                posh = h / 2;
-                break;
-            case RIGHT:
-                posw = 0;
-                posh = h / 2;
-                break;
-            default:
-                SDL_SetError("Invalid wave particle direction: %d\n", dir);
-                dir = UP;
-                posw = w / 2;
-                posh = h;
-        }
-
-        if (wave_ctor(
-                stage->waves[i],
-                graphic,
-                &(colors[rand() % 5]),
-                posw,
-                posh,
-                w,
-                h,
-                (rand() % 190 + 1),
-                (rand() % 10 + 1),
-                (rand() % 6 + 1),
-                (rand() % 6 + 1),
-                dir) != 0) { return -1; }
-    }
-
 
     return 0;
 }
 
 void stage_dtor(stage_t* stage) {
-    player_dtor(stage->player);
-    free(stage->player);
 
-    for (int i = 0; i < MAX_PARTICLES; i++) {
-        wave_dtor(stage->waves[i]);
-        free(stage->waves[i]);
-    }
+    // Work around for freeing memory
+    stage->current_scene = MAX_SCENES;
+    __stage_clean_scene(stage);
 
-    for (int i = 0; i < MAX_PARTICLES; i++) {
-        entity_dtor(stage->particles[i]);
-        free(stage->particles[i]);
-    }
+    transition_dtor(stage->transition);
+    free(stage->transition);
+    stage->transition = NULL;
 
-    fire_dtor(stage->fire);
-    free(stage->fire);
-
-    menu_dtor(stage->menu);
-    free(stage->menu);
-
-    background_dtor(stage->bg);
-    free(stage->bg);
-}
-
-
-void stage_draw(stage_t* stage, struct graphic_t* graphic, struct screen_t* screen, struct text_t* text) {
-
-    SDL_Renderer* renderer = graphic_get_renderer(graphic);
-
-    background_draw(stage->bg, renderer, screen);
-
-    for (int i = 0; i < MAX_PARTICLES; i++ ) {
-        entity_draw(stage->particles[i], graphic);
-        wave_draw(stage->waves[i], graphic);
-    }
-
-    fire_draw(stage->fire, graphic);
-
-    menu_draw(stage->menu, graphic, text);
-
-    player_draw(stage->player, graphic);
+    camera_dtor(stage->camera);
+    free(stage->camera);
+    stage->camera = NULL;
 
 }
 
-void stage_do(stage_t* stage, struct graphic_t* graphic, struct input_t* input, struct screen_t* screen) {
+void stage_do(stage_t* stage, game_component_args* args) {
 
-    for (int i = 0; i < MAX_PARTICLES; i++) {
-        wave_set_width(stage->waves[i], screen_get_window_w(screen));
-        wave_set_height(stage->waves[i], screen_get_window_h(screen));
-        wave_do(stage->waves[i]);
+    transition_do(stage->transition, args);
+
+    if (transition_is_middle(stage->transition)) {
+        __stage_clean_scene(stage);
+        __stage_build_scene(stage, args);
+        scene_do(stage->scene, args);
     }
 
+    if (input_scan_key(args->input, SDL_SCANCODE_T)) {
 
-    menu_do(stage->menu, input, screen);
+        transition_start(stage->transition);
+    }
+    // A bit strange, but only update scene if is not transitioning
+    // or if is fading out
+    if (!transition_is_active(stage->transition)) {
+        scene_do(stage->scene, args);
+    }
 
-    player_do(stage->player, input, screen);
+    camera_do(stage->camera, scene_get_focus_cord(stage->scene), args);
 
-    fire_move(stage->fire, player_get_x(stage->player), player_get_y(stage->player));
-    fire_do(stage->fire);
+}
 
+void stage_draw(read_only stage_t* stage, game_component_args* args) {
+
+    scene_draw(stage->scene, args);
+    camera_draw(stage->camera, args);
+    transition_draw(stage->transition, args);
+}
+
+void stage_set_scene(stage_t* stage, scenes_id id) {
+
+    if (!transition_is_active(stage->transition)) {
+        stage->current_scene = id;
+        transition_start(stage->transition);
+    }
+}
+
+private void __stage_clean_scene(stage_t* stage) {
+
+    switch (scene_get_id(stage->scene)) {
+        case MENU:
+            if (stage->current_scene != MENU) {
+                /* camera_dtor(stage->camera); */
+                /* free(stage->camera); */
+
+                menu_dtor((struct menu_t*)stage->scene);
+                free((struct menu_t*)stage->scene);
+                stage->scene = NULL;
+            }
+            break;
+
+        case LVL_ONE:
+            if (stage->current_scene != LVL_ONE) {
+                /* camera_dtor(stage->camera); */
+                /* free(stage->camera); */
+
+                lvl_one_dtor((struct lvl_one_t*)stage->scene);
+                free((struct lvl_one_t*)stage->scene);
+                stage->scene = NULL;
+            }
+            break;
+        case MAX_SCENES:
+        default:
+            break;
+    }
+}
+
+private void __stage_build_scene(stage_t* stage, game_component_args* args) {
+
+    if (stage->scene != NULL) { return; }
+
+    switch (stage->current_scene) {
+        case MENU:
+            stage->scene = (struct scene_t*)menu_new();
+            menu_ctor((struct menu_t*)stage->scene, args, MENU);
+
+            camera_set_area(stage->camera, (area_t){0});
+
+            break;
+
+        case LVL_ONE:
+            stage->scene = (struct scene_t*)lvl_one_new();
+            lvl_one_ctor((struct lvl_one_t*)stage->scene, args, LVL_ONE);
+
+            camera_set_area(stage->camera, lvl_one_get_area());
+
+            break;
+
+        case MAX_SCENES:
+        default:
+            stage->scene = (struct scene_t*)menu_new();
+            menu_ctor((struct menu_t*)stage->scene, args, MENU);
+            break;
+    }
+
+}
+
+SDL_FRect stage_get_camera_rect(read_only stage_t* stage) {
+    return camera_get_rect(stage->camera);
 }

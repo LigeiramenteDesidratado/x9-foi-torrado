@@ -1,2 +1,6 @@
 *.o
 *.out
+game
+x9-foi-torrado
+compile_commands.json
+vgcore.*

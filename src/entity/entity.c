@@ -1,21 +1,18 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
-#include "../graphic/graphic.h"
+
+#include "../common/common.h"
 
 typedef struct {
-    float x;
-    float y;
-    int w;
-    int h;
-    float dx;
-    float dy;
-    SDL_Texture* texture;
+    int w, h;
+
+    float x, y;
+    float dx, dy;
 
 } entity_t;
 
 entity_t* entity_new(void) {
     entity_t* entity = (entity_t*)malloc(sizeof(entity_t));
-    entity->texture = NULL;
     entity->dx = 0;
     entity->dy = 0;
     entity->x = 0;
@@ -26,28 +23,18 @@ entity_t* entity_new(void) {
     return entity;
 }
 
-int entity_ctor(entity_t* entity, SDL_Texture* texture, int x, int y) {
-
-    if(texture == NULL) {
-        SDL_SetError("invalid texture address");
-        return -1;
-    }
-    entity->texture = texture;
+int entity_ctor(entity_t* entity, float x, float y, int w, int h) {
 
     entity->x = x;
     entity->y = y;
-
-    if (SDL_QueryTexture(entity->texture, NULL, NULL, &entity->w, &entity->h) != 0) {
-        return -1;
-    }
+    entity->w = w;
+    entity->h = h;
 
     return 0;
 }
 
-void entity_dtor(entity_t* entity) {
+void entity_dtor(UNUSED entity_t* entity) {
 
-    SDL_DestroyTexture(entity->texture);
-    entity->texture = NULL;
 }
 
 void entity_do(entity_t* entity) {
@@ -56,19 +43,13 @@ void entity_do(entity_t* entity) {
     entity->y += entity->dy;
 }
 
-void entity_draw(entity_t* entity, struct graphic_t* graphic) {
+void entity_draw(UNUSED entity_t* entity, UNUSED game_component_args* args) {
 
-    graphic_blit(graphic, entity->texture, entity->x, entity->y);
 }
 
-SDL_Texture* entity_get_texture(entity_t* entity) {
+SDL_FPoint entity_get_middle(entity_t* entity) {
 
-    return entity->texture;
-}
-
-SDL_Point entity_get_middle(entity_t* entity) {
-
-    return (SDL_Point){entity->x + entity->w / 2, entity->y + entity->h / 2};
+    return (SDL_FPoint){entity->x + entity->w / 2, entity->y + entity->h / 2};
 }
 
 float entity_get_x(entity_t* entity) {
@@ -109,4 +90,8 @@ float entity_get_h(entity_t* entity) {
 
 float entity_get_w(entity_t* entity) {
     return entity->w;
+}
+
+SDL_FPoint entity_get_cord(entity_t* entity) {
+    return (SDL_FPoint){entity->x, entity->y};
 }

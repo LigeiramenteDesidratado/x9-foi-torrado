@@ -1,10 +1,10 @@
-#ifndef GAME
-#define GAME
+#ifndef GAME_H
+#define GAME_H
 
 struct game_t;
 
-// malloc a new new game object
-struct game_t* game_new();
+// memory allocator
+struct game_t* game_new(void);
 
 // Constructor
 void game_ctor(struct game_t*);
@@ -13,5 +13,7 @@ void game_ctor(struct game_t*);
 void game_dtor(struct game_t*);
 
 // Behaviors
+int game_main_loop(struct game_t*);
+void game_quit(struct game_t*);
 
 #endif

@@ -1,46 +1,73 @@
 #include <SDL2/SDL.h>
 
 #include "../screen/screen.h"
+#include "../graphic/graphic.h"
+#include "../texture/texture.h"
+#include "../common/common.h"
 
 typedef struct {
-    SDL_Texture* background_sun;
+    struct texture_t* bg;
+    // background texture holder
+    SDL_FPoint rect;
+
+    SDL_Rect area;
 
 } background_t;
 
 background_t* background_new(void) {
     background_t* background = (background_t*)malloc(sizeof(background_t));
-    background->background_sun = NULL;
+    background->bg = NULL;
+
+    background->rect = (SDL_FPoint){0};
+    background->area = (SDL_Rect){0};
 
     return background;
 }
 
-int background_ctor(background_t* background, SDL_Texture* texture) {
+int background_ctor(background_t* background, const char* filename, int w, int h, game_component_args* args) {
 
-    if(texture == NULL) {
-        SDL_SetError("invalid texture address");
-        return -1;
+    background->bg = texture_new();
+    texture_load(background->bg, filename, args);
+
+    if (w >= 0 && h >= 0) {
+        background->area.w = w;
+        background->area.h = h;
     }
-    background->background_sun = texture;
 
     return 0;
 }
 
 void background_dtor(background_t* background) {
 
-    SDL_DestroyTexture(background->background_sun);
-    background->background_sun = NULL;
+    texture_dtor(background->bg);
+    free(background->bg);
+    background->bg = NULL;
+
 }
 
-void background_draw(background_t* background, SDL_Renderer* renderer, struct screen_t* screen) {
-    SDL_SetRenderDrawColor(renderer, 0x12, 0x12, 0x12, 0xFF);
-    SDL_RenderClear(renderer);
+void background_do(background_t* background, game_component_args* args) {
 
-    SDL_Rect rect;
+    background->rect.x = (screen_get_window_w(args->screen) / 2) - (texture_get_w(background->bg) / 2);
+    background->rect.y = (screen_get_window_h(args->screen) / 2) - (texture_get_h(background->bg) / 2);
+}
 
-    rect.x = (screen_get_window_w(screen)/2) - 260 / 2;
-    rect.y = (screen_get_window_h(screen)/2) - 260 / 2;
-    rect.w = 260;
-    rect.h = 260;
-    SDL_RenderCopy(renderer, background->background_sun, NULL, &rect);
+void background_set_texture_wh(background_t* background, int w, int h) {
 
+    texture_set_w(background->bg, w);
+    texture_set_h(background->bg, h);
+}
+
+SDL_Rect background_get_area(background_t* background) {
+
+    return background->area;
+}
+
+void background_set_texture_color(background_t* background, SDL_Color c) {
+
+    texture_set_color_mod(background->bg, c);
+}
+
+void background_draw(background_t* background, game_component_args* args) {
+
+    texture_draw(background->bg, background->rect.x, background->rect.y, args);
 }

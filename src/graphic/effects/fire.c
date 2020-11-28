@@ -2,22 +2,21 @@
 
 #include <SDL2/SDL.h>
 
-#include "wave.h"
+#include "particle.h"
 #include "../../entity/entity.h"
+#include "../../common/common.h"
 #include "glow.h"
-
-typedef int bool_t;
 
 #define FIRE_PARTICLES 2
 
 typedef struct {
-    struct wave_t* particles[FIRE_PARTICLES];
+    struct particle_t* particles[FIRE_PARTICLES];
     struct entity_t* center;
     SDL_Rect rect;
     /* SDL_Texture* texture_cache[FIRE_PARTICLES]; */
 
     bool_t mid;
-    direction dir;
+    direction_t dir;
 
     /* int w; */
     /* int h; */
@@ -49,7 +48,7 @@ fire_t* fire_new(void) {
     return fire;
 }
 
-int fire_ctor(fire_t* fire, struct graphic_t* graphic, int _x, int _y, int _w, int _h, direction dir, int base_freq, int base_speed) {
+int fire_ctor(fire_t* fire, struct graphic_t* graphic, float _x, float _y, int _w, int _h, direction_t dir, int base_freq, int base_speed) {
 
     /* fire->x = x; */
     /* fire->y = y; */
@@ -57,7 +56,7 @@ int fire_ctor(fire_t* fire, struct graphic_t* graphic, int _x, int _y, int _w, i
     /* fire->h = h; */
 
     fire->center = entity_new();
-    if (entity_ctor(fire->center, create_glow_ball(graphic, 60, (SDL_Color){255,255,255}, 3), 0, 0) != 0) {
+    if (entity_ctor(fire->center, create_glow_ball(graphic, 60, (SDL_Color){255,255,255,255}, 3), 0.f, 0.f) != 0) {
         return -1;
     }
 
@@ -66,22 +65,22 @@ int fire_ctor(fire_t* fire, struct graphic_t* graphic, int _x, int _y, int _w, i
     fire->rect.w = _w;
     fire->rect.h = _h;
 
-    switch(dir)
-    {
+    switch(dir) {
+
         case UP:
             entity_set_x(fire->center, _x);
             entity_set_y(fire->center, _y + _h - _h / 5);
             break;
         case DOWN:
             entity_set_x(fire->center, _x);
-            entity_set_y(fire->center, _y + _h/5);
+            entity_set_y(fire->center, _y + _h / 5);
             break;
         case LEFT:
-            entity_set_x(fire->center, _x + _w - _w/5);
+            entity_set_x(fire->center, _x + _w - _w / 5);
             entity_set_y(fire->center, _y);
             break;
         case RIGHT:
-            entity_set_x(fire->center, _x + _w/5);
+            entity_set_x(fire->center, _x + _w / 5);
             entity_set_y(fire->center, _y);
             break;
         default:
@@ -92,14 +91,15 @@ int fire_ctor(fire_t* fire, struct graphic_t* graphic, int _x, int _y, int _w, i
 
     for (int i = 0; i < FIRE_PARTICLES; i++) {
 
-        int radius = 40 + rand()%10;
+        /* int radius = 40 + rand()%10; */
         fire_c.r = 200 + rand()%55;
         fire_c.g = 20 + rand()%60;
         fire_c.b = rand()%40;
 
         /* fire->texture_cache[i] = create_glow_ball(graphic, radius, fire_c, 3); */
 
-        int x = 0, y = 0, height = 0, amp = 0;
+        float x = 0, y = 0;
+        int height = 0, amp = 0;
 
         // TODO: fix fire position
         if (fire->dir == UP || fire->dir == DOWN) {
@@ -130,7 +130,7 @@ int fire_ctor(fire_t* fire, struct graphic_t* graphic, int _x, int _y, int _w, i
 
     SDL_Texture* texture = create_glow_ball(graphic, FIRE_PARTICLES*2 , (SDL_Color){230, 70, 20, 0}, 3);
     fire->center = entity_new();
-    if (entity_ctor(fire->center, texture, 100, 100) != 0) {
+    if (entity_ctor(fire->center, texture, 100.f, 100.f) != 0) {
         return -1;
     }
 
@@ -176,11 +176,11 @@ void fire_move(fire_t* fire, int x, int y) {
     /* } */
 }
 
-void fire_draw(fire_t* fire, struct graphic_t* graphic) {
+void fire_draw(fire_t* fire, game_component_args* args) {
 
-    entity_draw(fire->center, graphic);
+    entity_draw(fire->center, args);
 
     for (int i = 0; i < FIRE_PARTICLES; i++) {
-        wave_draw(fire->particles[i], graphic);
+        wave_draw(fire->particles[i], args);
     }
 }

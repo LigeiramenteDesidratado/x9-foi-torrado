@@ -3,8 +3,7 @@
 #include <SDL2/SDL.h>
 #include "../graphic/graphic.h"
 #include "../screen/screen.h"
-
-typedef int bool_t;
+#include "../common/common.h"
 
 typedef struct {
     float fps;
@@ -36,7 +35,7 @@ void debug_ctor(debug_t* debug, struct screen_t* screen) {
     debug->b_panel.w = screen_get_window_w(screen) - 10 - 10;
 }
 
-void debug_dtor(debug_t* input) {
+void debug_dtor(UNUSED debug_t* debug) {
     // Do nothing
 }
 
@@ -48,19 +47,19 @@ void debug_toggle_b_panel(debug_t* debug) {
     debug->show_b_panel = !debug->show_b_panel;
 }
 
-void debug_blit_b_panel(debug_t* debug, struct graphic_t* graphic, struct screen_t* screen) {
+void debug_blit_b_panel(debug_t* debug, game_component_args* args) {
 
 
-    int h = screen_get_window_h(screen);
+    int h = screen_get_window_h(args->screen);
     debug->b_panel.x = 10;
     debug->b_panel.y = ( h / 3 ) + (h / 3) + 10;
     debug->b_panel.h = ( h / 3 ) - 20;
-    debug->b_panel.w = screen_get_window_w(screen) - 10 - 10;
+    debug->b_panel.w = screen_get_window_w(args->screen) - 10 - 10;
 
     if (!debug->show_b_panel) {
         return;
     }
-    SDL_Renderer* renderer = graphic_get_renderer(graphic);
+    SDL_Renderer* renderer = graphic_get_renderer(args->graphic);
 
     SDL_SetRenderDrawColor(renderer, 0x14, 0xf4, 0x14, 0x14);
     SDL_RenderDrawRect(renderer, &debug->b_panel);

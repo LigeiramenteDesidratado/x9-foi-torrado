@@ -3,19 +3,14 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
-#include "../screen/screen.h"
 #include "../graphic/graphic.h"
+#include "../common/common.h"
 #include "text_p.h"
 
 #define MAX_LINE_LENGTH 1024
 
 #define GLYPH_W 7
 #define GLYPH_H 7
-
-typedef int bool_t;
-
-/* #define GLYPH_H 28 */
-/* #define GLYPH_W 18 */
 
 typedef struct {
     SDL_Texture* font_texture;
@@ -53,8 +48,8 @@ int text_get_max_line_length(void) {
     return MAX_LINE_LENGTH;
 }
 
-void text_draw_line(text_t* text, struct graphic_t* graphic, text_line_t* line, bool_t centered) {
-    int i, len, c, initx;
+void text_draw_line(text_t* text, game_component_args* args, text_line_t* line, bool_t centered) {
+    int i, len, c;
     SDL_Rect dest;
 
     len = strlen(line->line);
@@ -62,8 +57,6 @@ void text_draw_line(text_t* text, struct graphic_t* graphic, text_line_t* line, 
     if (centered) {
         line->rect.x += (line->rect.w) / 2 - ((len*(GLYPH_W+10)) / 2);
     }
-
-    initx = line->rect.x;
 
     text->src.w = GLYPH_W;
     text->src.h = GLYPH_H;
@@ -88,24 +81,24 @@ void text_draw_line(text_t* text, struct graphic_t* graphic, text_line_t* line, 
             text->src.x = (c - ' ') * GLYPH_W;
             dest.x = line->rect.x;
             dest.y = line->rect.y;
-            graphic_blit_rect(graphic,text->font_texture, &text->src, &dest);
+            graphic_blit_rect(args->graphic, text->font_texture, &text->src, &dest, args);
             line->rect.x += GLYPH_W+10;
         }
     }
 }
 
-void text_draw(text_t* text, struct graphic_t* graphic, int x, int w, int y, int r, int g, int b, char *format, ...) {
+void text_draw(text_t* text, game_component_args* args, int x, int w, int y, int r, int g, int b, char *format, ...) {
     int i, len, c, initx;
     SDL_Rect dest;
-    va_list args;
+    va_list argsf;
 
     initx = x;
 
     memset(&text->text_buffer, '\0', sizeof(text->text_buffer));
 
-    va_start(args, format);
-    vsprintf(text->text_buffer, format, args);
-    va_end(args);
+    va_start(argsf, format);
+    vsprintf(text->text_buffer, format, argsf);
+    va_end(argsf);
 
     len = strlen(text->text_buffer);
     text->src.w = GLYPH_W;
@@ -132,7 +125,7 @@ void text_draw(text_t* text, struct graphic_t* graphic, int x, int w, int y, int
             text->src.x = (c - ' ') * GLYPH_W;
             dest.x = x;
             dest.y = y;
-            graphic_blit_rect(graphic,text->font_texture, &text->src, &dest);
+            graphic_blit_rect(args->graphic,text->font_texture, &text->src, &dest, args);
             if (x + GLYPH_W+10 >= w) {
                 x = initx;
                 y += GLYPH_H+20;

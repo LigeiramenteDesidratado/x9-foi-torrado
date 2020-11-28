@@ -2,8 +2,7 @@
 #define INPUT_H
 
 #include <SDL2/SDL.h>
-
-typedef int bool_t;
+#include "../common/common.h"
 
 struct input_t;
 struct screen_t;
@@ -18,9 +17,10 @@ void input_ctor(struct input_t*);
 void input_dtor(struct input_t*);
 
 // Behavior
-void input_do(struct input_t*, struct screen_t* screen);
+void input_do(struct input_t* input, game_component_args* args);
 bool_t input_quit_signal(struct input_t*);
 void input_set_quit_signal(struct input_t* input, bool_t sig);
-bool_t input_scan_key(struct input_t*, int);
+bool_t input_scan_key(struct input_t* input, int key);
+bool_t input_scan_key_lock(struct input_t* input, int key);
 
 #endif

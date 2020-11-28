@@ -3,12 +3,17 @@
 
 #include <SDL2/SDL.h>
 
-#include "../entity/entity.h"
 #include "../graphic/graphic.h"
 #include "../input/input.h"
 #include "../screen/screen.h"
+#include "../background/background.h"
 #include "../text/text.h"
 #include "../text/text_p.h"
+#include "../common/common.h"
+#include "../stage/stage.h"
+#include "../scene/scene_p.h"
+#include "../scene/scene.h"
+#include "../audio/audio.h"
 
 typedef enum {
     PLAY,
@@ -21,7 +26,10 @@ typedef enum {
 
 // Main menu of the game
 typedef struct {
-    int lock;
+    // Is mandatory that scene_t type be the first item in the attribute structure.
+    scene_t scene;
+
+    struct background_t* bg;
 
     // Current selected item in the menu
     opts selected;
@@ -34,6 +42,9 @@ typedef struct {
 
 } menu_t;
 
+void __menu_do(void* ptr, game_component_args* args);
+void __menu_draw(void* ptr, game_component_args* args);
+
 // Allocate memory and set pointers to NULL
 menu_t* menu_new(void) {
     menu_t* menu = (menu_t*)malloc(sizeof(menu_t));
@@ -41,11 +52,22 @@ menu_t* menu_new(void) {
     for (int i = 0; i < MAX_OPTS; ++i) {
         menu->menu_text[i] = NULL;
     }
+    menu->bg = NULL;
     return menu;
 }
 
 // Initialize resources
-int menu_ctor(menu_t* menu, struct graphic_t* graphic) {
+int menu_ctor(menu_t* menu, game_component_args* args, scenes_id id) {
+
+    scene_ctor((struct scene_t*)menu, id);
+    menu->scene.scene_do = __menu_do;
+    menu->scene.scene_draw = __menu_draw;
+
+    menu->bg = background_new();
+    if (background_ctor(menu->bg, "gfx/menu-backg.png", 800, 600, args) != 0) {
+        return -1;
+    }
+    background_set_texture_color(menu->bg, game_colors[1]);
 
     const char* m_text[MAX_OPTS] = {
         "PLAY",
@@ -64,11 +86,10 @@ int menu_ctor(menu_t* menu, struct graphic_t* graphic) {
         strcpy(menu->menu_text[i]->line, m_text[i]);
 
         // The color of the unselected items in the menu
-        menu->menu_text[i]->color = (SDL_Color){0xf4,0xf4,0xf4, 0xff};
+        menu->menu_text[i]->color = game_colors[4];
 
     }
 
-    menu->lock = 12;
     return 0;
 }
 
@@ -82,50 +103,59 @@ void menu_dtor(menu_t* menu) {
         free(menu->menu_text[i]);
         menu->menu_text[i] = NULL;
     }
+
+    background_dtor(menu->bg);
+    free(menu->bg);
+    menu->bg = NULL;
+
+    scene_dtor((struct scene_t *)menu);
 }
 
-void menu_do(menu_t* menu, struct input_t* input, struct screen_t* screen) {
+void __menu_do(void* ptr, game_component_args* args) {
 
-    if (menu->lock > 0) {
-        menu->lock--;
-    }
+    menu_t* menu = (menu_t*)ptr;
 
     // Move to the previous item in the menu
-    if (menu->lock == 0 && (menu->selected) > PLAY && input_scan_key(input, SDL_SCANCODE_K)) {
+    if ((menu->selected) > PLAY && input_scan_key_lock(args->input, SDL_SCANCODE_K)) {
         menu->selected--;
-        menu->lock = 12;
+        audio_play_sound(args->audio, CH_MENU, SND_MENU);
     }
 
     // Move to the next item in the menu
-    if (menu->lock == 0 && (menu->selected) < EXIT && input_scan_key(input, SDL_SCANCODE_J)) {
+    if ((menu->selected) < EXIT && input_scan_key_lock(args->input, SDL_SCANCODE_J)) {
         menu->selected++;
-        menu->lock = 12;
+        audio_play_sound(args->audio, CH_MENU, SND_MENU);
     }
 
-    // Behaviors of the selected items in the menu
-    if (menu->lock == 0 && input_scan_key(input, SDL_SCANCODE_RETURN)) {
+    // Behavior of the selected item in the menu
+    if (input_scan_key_lock(args->input, SDL_SCANCODE_RETURN)) {
         switch(menu->selected) {
+
             case EXIT:
-                input_set_quit_signal(input, 0);
+                input_set_quit_signal(args->input, false_t);
                 break;
 
             case PLAY:
+                stage_set_scene(args->stage, LVL_ONE);
+                audio_play_sound(args->audio, CH_MENU, SND_LOADING);
                 break;
 
             case CREDITS:
                 break;
 
             case MAX_OPTS:
+                // Fallthrough
             default:
                 SDL_SetError("Invalid menu selection: %d\n", menu->selected);
                 break;
         }
-        menu->lock = 12;
     }
 
+    background_do(menu->bg, args);
+
     // Get the actual window width and height
-    int w = screen_get_window_w(screen);
-    int h = screen_get_window_h(screen);
+    int w = screen_get_window_w(args->screen);
+    int h = screen_get_window_h(args->screen);
 
     // Draw a rectangle in the middle of the screen
     // as a guideline for the menu
@@ -140,27 +170,25 @@ void menu_do(menu_t* menu, struct input_t* input, struct screen_t* screen) {
         menu->menu_text[i]->rect.x = menu->menu_rect.x;
         menu->menu_text[i]->rect.y = menu->menu_rect.y + 10 +(i*25);
         menu->menu_text[i]->rect.w = menu->menu_rect.w;
-        if (menu->selected == i) {
-            // The color of the items selected in the menu
-            menu->menu_text[i]->color.g = 0x13;
-            menu->menu_text[i]->color.b = 0x13;
+        if (menu->selected == (opts)i) {
+            // The color of the selected item in the menu
+            menu->menu_text[i]->color = game_colors[4];
         } else {
             // The color of the items not selected in the menu
-            menu->menu_text[i]->color.g = 0xf4;
-            menu->menu_text[i]->color.b = 0xf4;
+            menu->menu_text[i]->color = game_colors[1];
         }
     }
 
 }
 
-void menu_draw(menu_t* menu, struct graphic_t* graphic, struct text_t* text) {
+void __menu_draw(void* ptr, game_component_args* args) {
 
+    menu_t* menu = (menu_t*)ptr;
 
-    /* SDL_SetRenderDrawColor(graphic_get_renderer(graphic), 0x14, 0xf4, 0x14, 0x14); */
-    /* SDL_RenderDrawRect(graphic_get_renderer(graphic), &menu->menu_rect); */
+    background_draw(menu->bg, args);
 
     for (int i = 0; i < MAX_OPTS; ++i) {
         // Draw each menu option in its axis
-        text_draw_line(text, graphic, menu->menu_text[i], 1);
+        text_draw_line(args->text, args, menu->menu_text[i], true_t);
     }
 }

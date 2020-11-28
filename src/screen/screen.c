@@ -1,6 +1,8 @@
 #include "SDL2/SDL.h"
 #include <string.h>
 
+#include "../common/common.h"
+
 #define GAME_W 800
 #define GAME_H 600
 
@@ -9,14 +11,15 @@ typedef struct {
     unsigned int h;
     char* title;
     SDL_Window* window;
-    SDL_Renderer* renderer;
 
 } screen_t;
 
-screen_t* screen_new() {
+screen_t* screen_new(void) {
     screen_t* screen = (screen_t*)malloc(sizeof(screen_t));
-    screen->renderer = NULL;
-    screen->renderer = NULL;
+
+    // TODO: Does it belong here?
+    screen->window = NULL;
+    screen->title = NULL;
     screen->w = 0;
     screen->h = 0;
 
@@ -41,19 +44,10 @@ int screen_ctor(screen_t* screen, const char* title) {
             SDL_WINDOWPOS_CENTERED,
             screen->w,
             screen->h,
-            0
+            SDL_WINDOW_RESIZABLE
     );
 
     if (!screen->window) {
-        return -1;
-    }
-
-    screen->renderer = SDL_CreateRenderer(screen->window,
-            -1,
-            SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC
-    );
-
-    if (!screen->renderer) {
         return -1;
     }
 
@@ -61,11 +55,33 @@ int screen_ctor(screen_t* screen, const char* title) {
 }
 
 void screen_dtor(screen_t* screen) {
-    SDL_DestroyRenderer(screen->renderer);
-    screen->renderer = NULL;
 
     SDL_DestroyWindow(screen->window);
     screen->window = NULL;
 
     free(screen->title);
+}
+
+unsigned int screen_get_window_w(screen_t* screen) {
+    return screen->w;
+}
+
+unsigned int screen_get_window_h(screen_t* screen) {
+    return screen->h;
+}
+
+unsigned int screen_get_window_default_w(UNUSED screen_t* screen) {
+    return GAME_W;
+}
+
+unsigned int screen_get_window_default_h(UNUSED screen_t* screen) {
+    return GAME_H;
+}
+
+SDL_Window* screen_get_window(screen_t* screen) {
+    return screen->window;
+}
+void screen_set_window_size(screen_t* screen, int w, int h) {
+    screen->w = w;
+    screen->h = h;
 }
