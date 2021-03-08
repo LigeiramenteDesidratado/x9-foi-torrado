@@ -2,10 +2,10 @@
 #define SCENE_DEFS_H
 
 typedef enum {
-    EMPTY,
-    MENU,
-    LVL_ONE,
-    MAX_SCENES
+  EMPTY,
+  MENU,
+  LVL_ONE,
+  MAX_SCENES
 
 } scenes_id;
 

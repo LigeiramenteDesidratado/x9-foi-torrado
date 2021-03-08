@@ -7,13 +7,14 @@
 struct lvl_one_t;
 
 // Allocate memory
-struct lvl_one_t* lvl_one_new(void);
+struct lvl_one_t *lvl_one_new(void);
 
 // Constructor
-int lvl_one_ctor(struct lvl_one_t* lvl_one, game_component_args* args, scenes_id id);
+int lvl_one_ctor(struct lvl_one_t *lvl_one, game_component_args *args,
+                 scenes_id id);
 
 // Destructor
-void lvl_one_dtor(struct lvl_one_t* lvl_one);
+void lvl_one_dtor(struct lvl_one_t *lvl_one);
 
 // Behavior
 size_t lvl_one_size_of();
